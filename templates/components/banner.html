@@ -1,0 +1,6 @@
+<!-- путь: templates/components/banner.html -->
+{% if not is_active %}
+<div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded mb-3">
+    {{ banner_text or 'Сервис генерации ответов временно недоступен, обратитесь к администратору' }}
+</div>
+{% endif %}

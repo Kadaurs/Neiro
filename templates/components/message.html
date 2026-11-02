@@ -1,0 +1,31 @@
+<!-- путь: templates/components/message.html -->
+{% for m in messages %}
+{% if m %}
+<div class="p-3 rounded {{ 'bg-blue-50' if m.role == 'user' else 'bg-gray-50' }}">
+    <div class="text-xs text-gray-500 mb-1 flex justify-between">
+        <span>{{ m.user.email if m.user else 'Ассистент' }} · {{ m.created_at.strftime('%H:%M %d.%m') }}</span>
+    </div>
+
+    <!-- Отображение прикрепленного файла -->
+    {% if m.file_name %}
+    <div class="mb-2 inline-flex items-center text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300">
+        <span class="mr-1">📎</span> Прикреплен файл: <strong>{{ m.file_name }}</strong>
+    </div>
+    {% endif %}
+
+    <div class="whitespace-pre-wrap text-sm">
+        {% if search_query %}
+            {{ m.content.replace(search_query, '<mark>' + search_query + '</mark>') | safe }}
+        {% else %}
+            {{ m.content }}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% if llm_error %}
+<div class="text-sm text-red-500 p-2">
+    {{ llm_error }}
+    <button class="underline ml-2">Повторить запрос</button>
+</div>
+{% endif %}

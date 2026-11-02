@@ -1,0 +1,93 @@
+<!-- путь: templates/base.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Neuro{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // HTMX: обработка HX-Redirect уже встроена, но на всякий случай для 401
+        document.body.addEventListener('htmx:responseError', (e) => {
+            if (e.detail.xhr.status === 401) window.location.href = '/login';
+        });
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col md:block hidden">
+        <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+            <span class="text-lg font-bold">Neuro</span>
+            <a href="/logout" class="text-xs text-gray-300 hover:text-white">Выйти</a>
+        </div>
+        <div class="p-3 space-y-2">
+            <a href="/" class="block text-sm text-gray-300 hover:text-white">Главная</a>
+            {% if user and user.role in ['teamlead', 'admin'] %}
+            <a href="/" class="block text-sm text-gray-300 hover:text-white" onclick="document.getElementById('team-modal').classList.remove('hidden'); return false;">+ Командный чат</a>
+            {% endif %}
+            {% if user and user.role == 'admin' %}
+            <a href="/settings/api" class="block text-sm text-gray-300 hover:text-white">Настройки API</a>
+            {% endif %}
+        </div>
+        <div class="px-3 mt-2 flex-1 overflow-y-auto max-h-[calc(100vh-14rem)]">
+            {% include 'components/chat_list.html' %}
+        </div>
+        <div class="p-3 border-t border-gray-800">
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-sm py-2 rounded"
+                    onclick="document.getElementById('new-chat').classList.remove('hidden')">+ Новый чат</button>
+        </div>
+    </aside>
+
+    <!-- Mobile header -->
+    <div class="md:hidden fixed top-0 left-0 right-0 bg-gray-900 text-white p-3 flex justify-between z-40">
+        <span class="font-bold">Neuro</span>
+        <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-sm">☰</button>
+    </div>
+
+    <!-- Main -->
+    <main class="flex-1 p-6 md:ml-0 mt-12 md:mt-0">
+        {% if not is_active %}
+        <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded">
+            {{ banner_text }}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- New chat modal -->
+<div id="new-chat" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-96">
+        <h3 class="text-lg font-bold mb-3">Новый чат</h3>
+        <form method="post" action="/chats">
+            <input name="title" maxlength="50" required placeholder="Название чата"
+                   class="w-full border p-2 rounded mb-3">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('new-chat').classList.add('hidden')"
+                        class="px-3 py-1 rounded border">Отмена</button>
+                <button class="px-3 py-1 rounded bg-blue-600 text-white">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if user and user.role in ['teamlead', 'admin'] %}
+<div id="team-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-96">
+        <h3 class="text-lg font-bold mb-3">Новый командный чат</h3>
+        <form method="post" action="/chats/team">
+            <input name="title" maxlength="50" required placeholder="Название командного чата"
+                   class="w-full border p-2 rounded mb-3">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('team-modal').classList.add('hidden')"
+                        class="px-3 py-1 rounded border">Отмена</button>
+                <button class="px-3 py-1 rounded bg-blue-600 text-white">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+</body>
+</html>

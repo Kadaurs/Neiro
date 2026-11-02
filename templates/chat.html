@@ -1,0 +1,120 @@
+<!-- путь: templates/chat.html -->
+{% extends 'base.html' %}
+{% block title %}{{ chat.title }} — Neuro{% endblock %}
+{% block content %}
+<div class="bg-white rounded shadow flex flex-col h-[calc(100vh-8rem)]">
+    <div class="border-b p-3 flex justify-between items-center">
+        <div>
+            <h2 class="font-bold">{{ chat.title }}</h2>
+            <p class="text-xs text-gray-500">{{ 'Командный' if chat.type == 'team' else 'Личный' }} чат</p>
+        </div>
+        <form method="get" action="/chats/{{ chat.id }}/search" hx-get="/chats/{{ chat.id }}/search"
+              hx-target="#messages" hx-trigger="submit" class="flex gap-2">
+            <input name="q" placeholder="Поиск по истории" class="border p-1 rounded text-sm">
+            <button class="text-sm px-2 py-1 bg-gray-200 rounded">Найти</button>
+        </form>
+    </div>
+
+    <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3">
+        {% for m in messages %}
+            {% include 'components/message.html' with context %}
+        {% endfor %}
+    </div>
+
+    {% if not is_active %}
+    <div class="p-3 border-t text-sm text-yellow-800 bg-yellow-50">
+        Отправка сообщений недоступна: сервис генерации ответов временно недоступен.
+    </div>
+    {% else %}
+
+    <form class="border-t p-3 flex flex-col gap-2"
+          hx-post="/chats/{{ chat.id }}/messages"
+          hx-target="#messages"
+          hx-swap="beforeend"
+          hx-indicator="#sending"
+          hx-on::after-request="if(event.detail.successful) resetForm()">
+
+        <!-- Плашка прикрепленного файла -->
+        <div id="attached-file-container" class="hidden flex items-center bg-blue-50 text-blue-800 text-sm px-3 py-1.5 rounded border border-blue-200 w-fit">
+            <span class="mr-2">📎 <span id="attached-file-name"></span></span>
+            <button type="button" onclick="clearFile()" class="text-red-500 font-bold hover:text-red-700" title="Отменить прикрепление">✕</button>
+        </div>
+
+        <!-- Скрытое поле для передачи имени файла на сервер -->
+        <input type="hidden" name="file_name" id="hidden-file-name" value="">
+
+        <div class="flex gap-2 items-center">
+            <input type="file" id="file-input" accept=".txt,.log,.csv,.json" class="hidden" onchange="uploadFile(this)">
+
+            <button type="button" onclick="document.getElementById('file-input').click()"
+                    class="text-gray-500 hover:text-gray-800 text-2xl px-2" title="Прикрепить файл (макс 5 МБ)">
+                📎
+            </button>
+
+            <textarea name="content" rows="2" maxlength="15000"
+                      placeholder="{{ 'Упомяните @chatbot, чтобы получить ответ' if chat.type == 'team' else 'Введите сообщение...' }}"
+                      class="flex-1 border p-2 rounded resize-none"></textarea>
+            <button class="bg-blue-600 text-white px-4 rounded h-full">Отправить</button>
+            <span id="sending" class="htmx-indicator text-sm text-gray-500 self-center">Печатает...</span>
+        </div>
+        <div id="upload-error" class="text-red-500 text-xs hidden"></div>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+    async function uploadFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const errorDiv = document.getElementById('upload-error');
+        const fileContainer = document.getElementById('attached-file-container');
+        const fileNameSpan = document.getElementById('attached-file-name');
+        const hiddenInput = document.getElementById('hidden-file-name');
+
+        errorDiv.classList.add('hidden');
+        fileNameSpan.innerText = `Загрузка ${file.name}...`;
+        fileContainer.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/chats/{{ chat.id }}/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || 'Ошибка загрузки файла');
+            }
+
+            // Успех: показываем имя и сохраняем в скрытое поле
+            fileNameSpan.innerText = data.filename;
+            hiddenInput.value = data.filename;
+
+        } catch (error) {
+            // Ошибка: показываем текст ошибки и очищаем плашку
+            errorDiv.innerText = error.message;
+            errorDiv.classList.remove('hidden');
+            clearFile();
+        } finally {
+            input.value = ''; // Очищаем инпут
+        }
+    }
+
+    function clearFile() {
+        document.getElementById('attached-file-container').classList.add('hidden');
+        document.getElementById('hidden-file-name').value = '';
+        document.getElementById('attached-file-name').innerText = '';
+    }
+
+    function resetForm() {
+        clearFile();
+        document.querySelector('textarea[name="content"]').value = '';
+        document.getElementById('upload-error').classList.add('hidden');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+<!-- путь: templates/settings.html -->
+{% extends 'base.html' %}
+{% block title %}Настройки API{% endblock %}
+{% block content %}
+<div class="bg-white p-6 rounded shadow max-w-2xl">
+    <h1 class="text-2xl font-bold mb-4">Настройки API</h1>
+    {% if message %}<div class="mb-3 text-green-600 text-sm">{{ message }}</div>{% endif %}
+    {% if error %}<div class="mb-3 text-red-500 text-sm">{{ error }}</div>{% endif %}
+    <form method="post" action="/settings/api" class="space-y-4">
+        <div>
+            <label class="block text-sm mb-1">URL API</label>
+            <input name="hf_api_url" value="{{ settings.hf_api_url }}" required
+                   placeholder="https://api-inference.huggingface.co/..." class="w-full border p-2 rounded">
+        </div>
+        <div>
+            <label class="block text-sm mb-1">API Key</label>
+            <input name="hf_api_key" value="{{ settings.hf_api_key }}" type="password" required
+                   minlength="10" maxlength="100" class="w-full border p-2 rounded">
+        </div>
+        <div>
+            <label class="block text-sm mb-1">Model ID</label>
+            <input name="model_id" value="{{ settings.model_id }}" required
+                   class="w-full border p-2 rounded">
+        </div>
+        <div class="flex gap-2">
+            <button name="action" value="save" class="bg-gray-700 text-white px-4 py-2 rounded">Сохранить настройки</button>
+            <button name="action" value="test" class="bg-blue-600 text-white px-4 py-2 rounded">Проверить подключение</button>
+        </div>
+        <p class="text-xs text-gray-500">Статус: {{ 'Активно' if settings.is_active else 'Неактивно' }}</p>
+    </form>
+</div>
+{% endblock %}
