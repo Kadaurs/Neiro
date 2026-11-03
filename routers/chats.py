@@ -113,9 +113,18 @@ async def chat_view(
     chat = _get_chat_or_403(db, chat_id, user)
     messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.id.asc()).all()
     personal, team = _user_chats(db, user)
+
+    # Получаем список участников текущего чата
+    members = db.query(User).join(ChatUser, ChatUser.user_id == User.id).filter(ChatUser.chat_id == chat_id).all()
+    member_ids = [m.id for m in members]
+
+    # Получаем всех пользователей для добавления (исключая тех, кто уже в чате)
+    all_users = db.query(User).filter(User.id.notin_(member_ids)).all() if user.role in ("teamlead", "admin") else []
+
     return templates.TemplateResponse("chat.html", {
         "request": request, "user": user, "chat": chat, "messages": messages,
         "personal_chats": personal, "team_chats": team,
+        "members": members, "all_users": all_users,
         **_service_banner(db),
     })
 
@@ -254,8 +263,34 @@ async def leave_chat(
     return RedirectResponse(url="/", status_code=303)
 
 
-@router.delete("/chats/{chat_id}/members/{user_id}")
-async def remove_member(
+@router.post("/chats/{chat_id}/members")
+async def add_member(
+        chat_id: int,
+        user_id: int = Form(...),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+):
+    chat = db.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+
+    if chat.created_by != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Только создатель чата может добавлять участников")
+
+    new_user = db.get(User, user_id)
+    if not new_user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    existing = db.get(ChatUser, (chat_id, user_id))
+    if not existing:
+        db.add(ChatUser(chat_id=chat_id, user_id=user_id))
+        db.commit()
+
+    return RedirectResponse(url=f"/chats/{chat_id}", status_code=303)
+
+
+@router.post("/chats/{chat_id}/members/{user_id}/delete")
+async def remove_member_post(
         chat_id: int,
         user_id: int,
         current: User = Depends(get_current_user),
@@ -264,13 +299,12 @@ async def remove_member(
     chat = db.get(Chat, chat_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
-    if chat.created_by != current.id:
+
+    if chat.created_by != current.id and current.role != "admin":
         raise HTTPException(status_code=403, detail="Только создатель может удалять участников")
     if user_id == current.id:
-        raise HTTPException(
-            status_code=400,
-            detail="Чтобы покинуть чат, сначала передайте права создателя другому участнику или удалите чат целиком",
-        )
+        raise HTTPException(status_code=400, detail="Нельзя удалить себя")
+
     membership = db.get(ChatUser, (chat_id, user_id))
     if membership:
         db.delete(membership)

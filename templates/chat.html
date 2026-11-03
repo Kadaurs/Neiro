@@ -3,10 +3,19 @@
 {% block title %}{{ chat.title }} — Neuro{% endblock %}
 {% block content %}
 <div class="bg-white rounded shadow flex flex-col h-[calc(100vh-8rem)]">
+    <!-- Шапка чата -->
     <div class="border-b p-3 flex justify-between items-center">
-        <div>
-            <h2 class="font-bold">{{ chat.title }}</h2>
-            <p class="text-xs text-gray-500">{{ 'Командный' if chat.type == 'team' else 'Личный' }} чат</p>
+        <div class="flex items-center gap-4">
+            <div>
+                <h2 class="font-bold">{{ chat.title }}</h2>
+                <p class="text-xs text-gray-500">{{ 'Командный' if chat.type == 'team' else 'Личный' }} чат</p>
+            </div>
+            {% if chat.type == 'team' and (chat.created_by == user.id or user.role == 'admin') %}
+                <button type="button" onclick="document.getElementById('members-modal').classList.remove('hidden')"
+                        class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border flex items-center gap-1">
+                    👥 Участники ({{ members|length }})
+                </button>
+            {% endif %}
         </div>
         <form method="get" action="/chats/{{ chat.id }}/search" hx-get="/chats/{{ chat.id }}/search"
               hx-target="#messages" hx-trigger="submit" class="flex gap-2">
@@ -15,18 +24,19 @@
         </form>
     </div>
 
+    <!-- Сообщения -->
     <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3">
         {% for m in messages %}
             {% include 'components/message.html' with context %}
         {% endfor %}
     </div>
 
+    <!-- Форма отправки -->
     {% if not is_active %}
     <div class="p-3 border-t text-sm text-yellow-800 bg-yellow-50">
         Отправка сообщений недоступна: сервис генерации ответов временно недоступен.
     </div>
     {% else %}
-
     <form class="border-t p-3 flex flex-col gap-2"
           hx-post="/chats/{{ chat.id }}/messages"
           hx-target="#messages"
@@ -34,13 +44,11 @@
           hx-indicator="#sending"
           hx-on::after-request="if(event.detail.successful) resetForm()">
 
-        <!-- Плашка прикрепленного файла -->
         <div id="attached-file-container" class="hidden flex items-center bg-blue-50 text-blue-800 text-sm px-3 py-1.5 rounded border border-blue-200 w-fit">
             <span class="mr-2">📎 <span id="attached-file-name"></span></span>
             <button type="button" onclick="clearFile()" class="text-red-500 font-bold hover:text-red-700" title="Отменить прикрепление">✕</button>
         </div>
 
-        <!-- Скрытое поле для передачи имени файла на сервер -->
         <input type="hidden" name="file_name" id="hidden-file-name" value="">
 
         <div class="flex gap-2 items-center">
@@ -61,6 +69,50 @@
     </form>
     {% endif %}
 </div>
+
+<!-- Модальное окно управления участниками -->
+{% if chat.type == 'team' and (chat.created_by == user.id or user.role == 'admin') %}
+<div id="members-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-[500px] max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Участники чата</h3>
+            <button type="button" onclick="document.getElementById('members-modal').classList.add('hidden')" class="text-gray-500 hover:text-black">✕</button>
+        </div>
+
+        <!-- Список текущих участников -->
+        <div class="flex-1 overflow-y-auto mb-4 border rounded">
+            <ul class="divide-y">
+                {% for member in members %}
+                <li class="p-3 flex justify-between items-center {% if member.id == chat.created_by %}bg-gray-50{% endif %}">
+                    <div>
+                        <div class="font-medium text-sm">{{ member.email }}</div>
+                        <div class="text-xs text-gray-500">{{ member.role }}</div>
+                    </div>
+                    {% if member.id != chat.created_by %}
+                    <form method="post" action="/chats/{{ chat.id }}/members/{{ member.id }}/delete">
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-bold" title="Удалить участника">✕</button>
+                    </form>
+                    {% else %}
+                    <span class="text-xs text-gray-400 border px-2 py-1 rounded bg-white">Создатель</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Форма добавления нового участника -->
+        <form method="post" action="/chats/{{ chat.id }}/members" class="border-t pt-4 flex gap-2">
+            <select name="user_id" required class="flex-1 border p-2 rounded text-sm bg-white">
+                <option value="" disabled selected>Выберите сотрудника...</option>
+                {% for u in all_users %}
+                    <option value="{{ u.id }}">{{ u.email }} ({{ u.role }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Добавить</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <script>
     async function uploadFile(input) {
@@ -91,17 +143,15 @@
                 throw new Error(data.detail || 'Ошибка загрузки файла');
             }
 
-            // Успех: показываем имя и сохраняем в скрытое поле
             fileNameSpan.innerText = data.filename;
             hiddenInput.value = data.filename;
 
         } catch (error) {
-            // Ошибка: показываем текст ошибки и очищаем плашку
             errorDiv.innerText = error.message;
             errorDiv.classList.remove('hidden');
             clearFile();
         } finally {
-            input.value = ''; // Очищаем инпут
+            input.value = '';
         }
     }
 
