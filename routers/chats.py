@@ -17,8 +17,21 @@ templates = Jinja2Templates(directory="templates")
 
 # ---------- helpers ----------
 
+def get_base_context(db: Session, user: User) -> dict:
+    """Собирает контекст для сайдбара и баннера, чтобы передавать его на любых страницах."""
+    personal, team = _user_chats(db, user)
+
+    s = db.get(SystemSettings, 1)
+    is_active = bool(s and s.is_active)
+
+    return {
+        "personal_chats": personal,
+        "team_chats": team,
+        "is_active": is_active,
+        "banner_text": None if is_active else "Сервис генерации ответов временно недоступен, обратитесь к администратору",
+    }
+
 def _user_chats(db: Session, user: User):
-    """Возвращает личные и командные чаты пользователя."""
     personal = (
         db.query(Chat)
         .join(ChatUser, ChatUser.chat_id == Chat.id)
@@ -143,7 +156,6 @@ async def send_message(
     chat = _get_chat_or_403(db, chat_id, user)
     text = (content or "").strip()
 
-    # Разрешаем отправку только файла без текста
     if not text and not file_name:
         raise HTTPException(status_code=400, detail="Пустое сообщение")
     if len(text) > settings.MAX_MESSAGE_LEN:
@@ -172,21 +184,27 @@ async def send_message(
             db.commit()
         except HTTPException as exc:
             db.refresh(user_msg)
+            # Рендерим ошибку через компонент
             return templates.TemplateResponse("components/message.html", {
-                "request": request, "user": user, "chat": chat, "messages": [user_msg],
-                "llm_error": exc.detail,
+                "request": request, "user": user, "chat": chat, "m": user_msg, "llm_error": exc.detail,
             })
 
     db.refresh(user_msg)
     if assistant_msg:
         db.refresh(assistant_msg)
 
-    rendered = templates.TemplateResponse("components/message.html", {
-        "request": request, "user": user, "chat": chat,
-        "messages": [user_msg, assistant_msg] if assistant_msg else [user_msg],
-    })
-    rendered.headers["HX-Trigger"] = "message-sent"
-    return rendered
+    # Собираем HTML-ответ из компонентов (по одному сообщению за раз)
+    html_response = ""
+    html_response += templates.TemplateResponse("components/message.html", {
+        "request": request, "user": user, "chat": chat, "m": user_msg
+    }).body.decode("utf-8")
+
+    if assistant_msg:
+        html_response += templates.TemplateResponse("components/message.html", {
+            "request": request, "user": user, "chat": chat, "m": assistant_msg
+        }).body.decode("utf-8")
+
+    return HTMLResponse(html_response)
 
 
 # ---------- поиск по истории ----------
@@ -201,20 +219,32 @@ async def search_messages(
 ):
     _get_chat_or_403(db, chat_id, user)
     q = (q or "").strip()
+
+    # Если поиск пустой — возвращаем всю историю чата
     if not q:
-        return HTMLResponse("")
-    msgs = (
-        db.query(Message)
-        .filter(Message.chat_id == chat_id, Message.content.ilike(f"%{q}%"))
-        .order_by(Message.id.asc())
-        .all()
-    )
+        msgs = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.id.asc()).all()
+        search_query = None
+    else:
+        msgs = (
+            db.query(Message)
+            .filter(Message.chat_id == chat_id, Message.content.ilike(f"%{q}%"))
+            .order_by(Message.id.asc())
+            .all()
+        )
+        search_query = q
+
     if not msgs:
         return HTMLResponse('<div class="text-sm text-red-500 p-2">Ничего не найдено</div>')
-    return templates.TemplateResponse("components/message.html", {
-        "request": request, "user": user, "chat": db.get(Chat, chat_id),
-        "messages": msgs, "search_query": q,
-    })
+
+    html_response = ""
+    for msg in msgs:
+        html_response += templates.TemplateResponse("components/message.html", {
+            "request": request, "user": user, "chat": db.get(Chat, chat_id),
+            "m": msg, "search_query": search_query
+        }).body.decode("utf-8")
+
+    # Возвращаем готовый HTML
+    return HTMLResponse(html_response)
 
 
 # ---------- удаление чата ----------
@@ -310,3 +340,35 @@ async def remove_member_post(
         db.delete(membership)
         db.commit()
     return RedirectResponse(url=f"/chats/{chat_id}", status_code=303)
+
+
+# ---------- получение новых сообщений (Polling) ----------
+
+@router.get("/chats/{chat_id}/messages/new", response_class=HTMLResponse)
+async def get_new_messages(
+        chat_id: int,
+        last_id: int = 0,
+        request: Request = None,
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+):
+    """Возвращает только те сообщения, ID которых больше last_id."""
+    _get_chat_or_403(db, chat_id, user)
+
+    new_msgs = (
+        db.query(Message)
+        .filter(Message.chat_id == chat_id, Message.id > last_id)
+        .order_by(Message.id.asc())
+        .all()
+    )
+
+    if not new_msgs:
+        return HTMLResponse("")
+
+    html_response = ""
+    for msg in new_msgs:
+        html_response += templates.TemplateResponse("components/message.html", {
+            "request": request, "user": user, "chat": db.get(Chat, chat_id), "m": msg
+        }).body.decode("utf-8")
+
+    return HTMLResponse(html_response)

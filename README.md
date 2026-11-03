@@ -12,12 +12,14 @@
 4. Скопируйте `.env.example` → `.env`, сгенерируйте `SECRET_KEY`:
    `openssl rand -hex 32`
 5. Запустите: `uvicorn main:app --reload`
-6. Откройте http://127.0.0.1:8000
+6. для запуска по локальной сети - `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
+7. Откройте http://127.0.0.1:8000
 
 ## Учётные данные по умолчанию
 
 - **admin@local** / **admin123** — создаётся при старте, если БД пуста.
-
+- **teamlead@local** / **teamlead123**
+- **employee@local** / **employee123**
 ## Чек-лист проверки
 
 1. Вход админом → /settings/api → указать URL, API Key, Model ID → «Проверить подключение».

@@ -9,6 +9,9 @@ from models import SystemSettings, User
 from services.auth_service import require_admin
 from services.llm_service import test_connection
 
+# Импортируем функцию, которую мы создадим в chats.py
+from routers.chats import get_base_context
+
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
@@ -22,6 +25,7 @@ async def settings_page(
     s = db.get(SystemSettings, 1) or SystemSettings(id=1, hf_api_url="", hf_api_key="", model_id="", is_active=False)
     return templates.TemplateResponse("settings.html", {
         "request": request, "user": user, "settings": s, "message": None, "error": None,
+        **get_base_context(db, user)  # <--- Добавлен контекст сайдбара
     })
 
 
@@ -60,6 +64,7 @@ async def save_settings(
         db.commit()
         return templates.TemplateResponse("settings.html", {
             "request": request, "user": user, "settings": s, "message": None, "error": error,
+            **get_base_context(db, user)  # <--- Добавлен контекст сайдбара
         })
 
     if action == "test":
@@ -70,6 +75,7 @@ async def save_settings(
         return templates.TemplateResponse("settings.html", {
             "request": request, "user": user, "settings": s,
             "message": msg if ok else None, "error": None if ok else msg,
+            **get_base_context(db, user)  # <--- Добавлен контекст сайдбара
         })
 
     # простое сохранение без теста — считаем валидным по формату, но не активным
