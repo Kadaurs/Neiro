@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from database import get_db
 from models import User
@@ -36,6 +37,8 @@ async def login_submit(
             {"request": request, "error": "Неверный логин или пароль"},
             status_code=400,
         )
+    user.last_activity_at = datetime.utcnow()
+    db.commit()
 
     token = create_access_token(user.id)
     response = RedirectResponse(url="/", status_code=303)
