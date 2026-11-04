@@ -14,7 +14,10 @@
 5. Запустите: `uvicorn main:app --reload`
 6. для запуска по локальной сети - `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
 7. Откройте http://127.0.0.1:8000
-
+## Подключение
+1. https://openrouter.ai/api/v1
+2. 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
+3. openrouter/free
 ## Учётные данные по умолчанию
 
 - **admin@local** / **admin123** — создаётся при старте, если БД пуста.
