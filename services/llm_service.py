@@ -55,7 +55,7 @@ async def call_llm(chat_id: int, user_text: str) -> str:
     payload = {
         "model": cfg.model_id,
         "messages": build_prompt(user_text, rag_context),
-        "max_tokens": 1024,
+        "max_tokens": 8192,
     }
     headers = {
         "Authorization": f"Bearer {cfg.hf_api_key}",

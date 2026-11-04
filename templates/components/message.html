@@ -5,6 +5,7 @@
         <span>{{ m.user.email if m.user else 'Ассистент' }} · {{ m.created_at.strftime('%H:%M %d.%m') }}</span>
     </div>
 
+    <!-- Блок файла -->
     {% if m.file_name %}
     <div class="mb-2 inline-flex items-center text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300">
         <span class="mr-1">📎</span> Прикреплен файл: <strong>{{ m.file_name }}</strong>

@@ -60,18 +60,18 @@
         {% endfor %}
     </div>
 
-    <!-- Форма отправки сообщения -->
+    <!-- Форма отправки -->
     {% if not is_active %}
     <div class="p-3 border-t text-sm text-yellow-800 bg-yellow-50">
         Отправка сообщений недоступна: сервис генерации ответов временно недоступен.
     </div>
     {% else %}
-    <form class="border-t p-3 flex flex-col gap-2"
+    <form id="message-form"
+          class="border-t p-3 flex flex-col gap-2"
           hx-post="/chats/{{ chat.id }}/messages"
           hx-target="#messages"
           hx-swap="beforeend"
-          hx-indicator="#sending"
-          hx-on::after-request="if(event.detail.successful) resetForm()">
+          hx-indicator="#sending">
 
         <div id="attached-file-container" class="hidden flex items-center bg-blue-50 text-blue-800 text-sm px-3 py-1.5 rounded border border-blue-200 w-fit">
             <span class="mr-2">📎 <span id="attached-file-name"></span></span>
@@ -80,18 +80,24 @@
 
         <input type="hidden" name="file_name" id="hidden-file-name" value="">
 
-        <div class="flex gap-2 items-center">
+        <div class="flex gap-2 items-start">
             <input type="file" id="file-input" accept=".txt,.log,.csv,.json" class="hidden" onchange="uploadFile(this)">
 
             <button type="button" onclick="document.getElementById('file-input').click()"
-                    class="text-gray-500 hover:text-gray-800 text-2xl px-2" title="Прикрепить файл (макс 5 МБ)">
+                    class="text-gray-500 hover:text-gray-800 text-2xl px-2 mt-1" title="Прикрепить файл (макс 5 МБ)">
                 📎
             </button>
 
-            <textarea name="content" rows="2" maxlength="15000"
-                      placeholder="{{ 'Упомяните @chatbot, чтобы получить ответ' if chat.type == 'team' else 'Введите сообщение...' }}"
-                      class="flex-1 border p-2 rounded resize-none"></textarea>
-            <button type="submit" class="bg-blue-600 text-white px-4 rounded h-full">Отправить</button>
+            <div class="flex-1 flex flex-col">
+                <textarea name="content" id="message-input" rows="2" required
+                          placeholder="{{ 'Упомяните @chatbot, чтобы получить ответ' if chat.type == 'team' else 'Введите сообщение...' }}"
+                          class="w-full border p-2 rounded resize-none focus:outline-none focus:border-blue-500"></textarea>
+                <div id="char-counter" class="text-xs text-gray-400 text-right mt-1">0 / 15000</div>
+            </div>
+
+            <button type="submit" id="submit-btn" class="bg-blue-600 text-white px-4 rounded h-[52px] disabled:opacity-50 disabled:cursor-not-allowed mt-0.5">
+                Отправить
+            </button>
             <span id="sending" class="htmx-indicator text-sm text-gray-500 self-center">Печатает...</span>
         </div>
         <div id="upload-error" class="text-red-500 text-xs hidden"></div>
@@ -152,7 +158,7 @@
                     class="px-3 py-1 rounded border hover:bg-gray-50">Отмена</button>
 
             <button hx-delete="/chats/{{ chat.id }}"
-                    onclick="window.location.href='/';"
+                    hx-target="body"
                     class="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">
                 Удалить
             </button>
@@ -186,10 +192,7 @@
             });
 
             const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || 'Ошибка загрузки файла');
-            }
+            if (!response.ok) throw new Error(data.detail || 'Ошибка загрузки');
 
             fileNameSpan.innerText = data.filename;
             hiddenInput.value = data.filename;
@@ -207,23 +210,57 @@
         document.getElementById('attached-file-container').classList.add('hidden');
         document.getElementById('hidden-file-name').value = '';
         document.getElementById('attached-file-name').innerText = '';
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) fileInput.value = '';
     }
 
-    function resetForm() {
-        clearFile();
-        document.querySelector('textarea[name="content"]').value = '';
-        document.getElementById('upload-error').classList.add('hidden');
-    }
+    // --- ОБРАБОТКА ФОРМЫ ОТПРАВКИ ---
+    const msgForm = document.getElementById('message-form');
+    const textarea = document.getElementById('message-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const counter = document.getElementById('char-counter');
+    const uploadError = document.getElementById('upload-error');
 
-    // --- ИСПРАВЛЕНИЕ ДУБЛИРОВАНИЯ ПРИ F5 ---
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        if (evt.detail.successful && evt.detail.elt.tagName === 'FORM' && evt.detail.elt.method !== 'get') {
-            window.history.replaceState(null, '', window.location.pathname);
-        }
-    });
+    let isSending = false; // ФЛАГ: блокирует Polling, пока идет отправка
+
+    if (msgForm) {
+        msgForm.addEventListener('htmx:beforeRequest', function(evt) {
+            isSending = true; // Включаем блокировку polling
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Отправка...';
+        });
+
+        msgForm.addEventListener('htmx:afterRequest', function(evt) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Отправить';
+            uploadError.classList.add('hidden');
+            isSending = false; // Выключаем блокировку
+
+            if (evt.detail.successful) {
+                textarea.value = '';
+                if (counter) counter.innerText = '0 / 15000';
+                clearFile();
+                window.history.replaceState(null, '', window.location.pathname);
+            } else {
+                if (evt.detail.xhr.responseText) {
+                    try {
+                        const errData = JSON.parse(evt.detail.xhr.responseText);
+                        uploadError.innerText = errData.detail || 'Ошибка отправки';
+                        uploadError.classList.remove('hidden');
+                    } catch(e) {
+                        uploadError.innerText = 'Ошибка отправки сообщения';
+                        uploadError.classList.remove('hidden');
+                    }
+                }
+            }
+        });
+    }
 
     // --- АВТООБНОВЛЕНИЕ (POLLING) ---
     function pollNewMessages() {
+        // Если прямо сейчас идет отправка сообщения через HTMX, НЕ ЗАПРАШИВАЕМ новые
+        if (isSending) return;
+
         const messagesDiv = document.getElementById('messages');
         if (!messagesDiv) return;
 
@@ -250,6 +287,7 @@
 
                     newMessages.forEach(msg => {
                         const msgId = msg.getAttribute('data-msg-id');
+                        // Добавляем только если такого сообщения еще нет на экране
                         if (!messagesDiv.querySelector(`[data-msg-id="${msgId}"]`)) {
                             messagesDiv.appendChild(msg);
                         }
@@ -263,44 +301,52 @@
                     messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 }
             })
-            .catch(err => console.error("Ошибка при получении сообщений:", err));
+            .catch(err => console.error("Ошибка при получении:", err));
     }
 
     setInterval(pollNewMessages, 3000);
 
-    // --- ОБРАБОТКА ОБНОВЛЕНИЙ ИЗ HTMX (Отправка сообщения / Поиск) ---
+    // --- ОБРАБОТКА ОБНОВЛЕНИЙ ИЗ HTMX (Скролл и поиск) ---
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail.target.id === 'messages') {
             const messagesDiv = document.getElementById('messages');
 
-            // 1. Автоскролл к первому совпадению (если это поиск)
+            // 1. Автоскролл к первому совпадению при поиске
             const firstMark = messagesDiv.querySelector('mark');
             if (firstMark) {
                 firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return; // Прерываем, чтобы не сбрасывать data-last-id при поиске
+                return;
             }
 
-            // 2. Обновление data-last-id и скролл вниз (при отправке своего сообщения)
-            // Проверяем, что это не поиск (нет input name="q"), а именно отправка сообщения
-            if (!evt.detail.requestConfig || !evt.detail.requestConfig.parameters?.q) {
-                const allMsgs = messagesDiv.querySelectorAll('[data-msg-id]');
-                if (allMsgs.length > 0) {
-                    const newLastId = allMsgs[allMsgs.length - 1].getAttribute('data-msg-id');
-                    messagesDiv.setAttribute('data-last-id', newLastId);
+            // 2. Скролл вниз и обновление ID при отправке сообщения
+            const allMsgs = messagesDiv.querySelectorAll('[data-msg-id]');
+            if (allMsgs.length > 0) {
+                const newLastId = allMsgs[allMsgs.length - 1].getAttribute('data-msg-id');
+                messagesDiv.setAttribute('data-last-id', newLastId);
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    });
+
+    // --- СЧЕТЧИК СИМВОЛОВ ---
+    const MAX_LEN = 15000;
+    if (textarea && counter && submitBtn) {
+        textarea.addEventListener('input', function() {
+            const len = this.value.length;
+            counter.innerText = `${len} / ${MAX_LEN}`;
+
+            if (len > MAX_LEN) {
+                counter.classList.add('text-red-500', 'font-bold');
+                counter.classList.remove('text-gray-400');
+                submitBtn.disabled = true;
+            } else {
+                counter.classList.remove('text-red-500', 'font-bold');
+                counter.classList.add('text-gray-400');
+                if (!msgForm || !msgForm.classList.contains('htmx-request')) {
+                    submitBtn.disabled = false;
                 }
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }
-        }
-    });
-
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'messages') {
-            const firstMark = document.querySelector('#messages mark');
-            if (firstMark) {
-                firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    });
-
+        });
+    }
 </script>
 {% endblock %}
