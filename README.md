@@ -1,9 +1,9 @@
-# путь: README.md
-# Neuro — MVP1
+### путь: README.md
+### Neuro — MVP1
 
 Система совместного анализа логов с LLM. Pure Python (FastAPI + SSR + HTMX).
 
-## Запуск в PyCharm
+### Запуск в PyCharm
 1. Откройте папку `neuro-mvp1` как проект.
 2. Создайте и активируйте виртуальное окружение:
    - Windows: `python -m venv .venv && .venv\Scripts\activate`
@@ -14,29 +14,18 @@
 5. Запустите: `uvicorn main:app --reload`
 6. для запуска по локальной сети - `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
 7. Откройте http://127.0.0.1:8000
-## Подключение
+### Подключение
 1. https://openrouter.ai/api/v1
 2. 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
 3. openrouter/free
-## Учётные данные по умолчанию
+### Учётные данные по умолчанию
 
 - **admin@local** / **admin123** — создаётся при старте, если БД пуста.
 - **teamlead@local** / **teamlead123**
 - **employee@local** / **employee123**
-## Чек-лист проверки
 
-1. Вход админом → /settings/api → указать URL, API Key, Model ID → «Проверить подключение».
-2. Создать сотрудника и тимлида (через БД/скрипт).
-3. Вход сотрудником → личный чат → отправить сообщение → загрузить файл → поиск.
-4. Вход тимлидом → создать командный чат → сообщение без `@chatbot` (сохраняется) → с `@chatbot` (ответ LLM).
-5. Отозвать ключ админом (is_active=False) → у сотрудника баннер «Сервис недоступен», отправка заблокирована.
-
-## Структура
-
-См. `neuro-mvp1/` — всё в одной папке, без Node.js и Docker.
-
-## Команда для времени активности
-python -c "from database import SessionLocal; from models import User; from datetime import datetime, timedelta; db=SessionLocal(); u=db.query(User).filter(User.email=='admin@local').first(); u.last_activity_at = datetime.utcnow() - timedelta(minutes=40); db.commit(); print(f'Время активности {u.email} успешно изменено на 40 минут назад.')"
+### Команда для времени активности
+*   **`python -c "from database import SessionLocal; from models import User; from datetime import datetime, timedelta; db=SessionLocal(); u=db.query(User).filter(User.email=='admin@local').first(); u.last_activity_at = datetime.utcnow() - timedelta(minutes=40); db.commit(); print(f'Время активности {u.email} успешно изменено на 40 минут назад.')"`**
 ---
 ##
 ##
@@ -87,7 +76,7 @@ python -c "from database import SessionLocal; from models import User; from date
 ##
 ##
 ##
-## 🤝 Инструкция по командной работе в GitHub (через интерфейс PyCharm)
+## Инструкция по командной работе в GitHub (через интерфейс PyCharm)
 
 Чтобы мы не теряли код, не ломали рабочие функции и не мешали друг другу, мы работаем по следующим правилам. Пожалуйста, прочитайте их перед началом работы.
 
@@ -100,7 +89,7 @@ python -c "from database import SessionLocal; from models import User; from date
 
 ---
 
-### Пошаговый алгоритм (шпаргалка)
+### Пошаговый алгоритм
 
 #### Шаг 1. Начало новой задачи (обновление и создание ветки)
 1. Убедитесь, что находитесь в ветке `master`. Если нет — нажмите на название текущей ветки и выберите `master` → `Checkout`.
@@ -146,3 +135,34 @@ python -c "from database import SessionLocal; from models import User; from date
 
 #### Шаг 7. После слияния
 Вернитесь в PyCharm и обновите свой `master`, чтобы забрать общий код:
+
+##
+##
+##
+## 🏷️ Правила разметки интерфейса для автотестов (data-testid)
+
+Чтобы наши автотесты работали стабильно и не падали из-за смены дизайна (например, если мы поменяем цвет кнопки или её текст), мы обязаны размечать все интерактивные элементы специальным атрибутом `data-testid`. Автотестер будет искать элементы на странице ТОЛЬКО по этому атрибуту.
+
+### Главное правило
+**Любой элемент, на который можно кликнуть, в который можно написать текст или который нужно проверить (например, сообщение об ошибке), ОБЯЗАТЕЛЬНО должен иметь атрибут `data-testid`.**
+
+### Как и куда писать атрибут
+Атрибут пишется внутри открывающего HTML-тега, как обычный атрибут (рядом с `class`, `id`, `name` и т.д.). 
+Пример: `<button class="bg-blue-600" data-testid="btn-submit-login">Войти</button>`
+
+### Формат именования (kebab-case)
+*   Только латиница, цифры и дефисы. Никаких пробелов, кириллицы или заглавных букв.
+*   Общий шаблон: `[тип-элемента]-[название]-[уточнение]`.
+*   **Префиксы для типов элементов:**
+    *   `btn-` — кнопки (button, a с ролью кнопки). Пример: `data-testid="btn-save-settings"`
+    *   `input-` — поля ввода (input, textarea, select). Пример: `data-testid="input-user-email"`
+    *   `link-` — ссылки навигации. Пример: `data-testid="link-go-home"`
+    *   `modal-` — модальные окна. Пример: `data-testid="modal-delete-chat"`
+    *   `msg-` — сообщения или текстовые блоки. Пример: `data-testid="msg-error-login"`
+    *   `badge-` — счетчики и индикаторы. Пример: `data-testid="badge-unread-count"`
+    *   `form-` — формы. Пример: `data-testid="form-login"`
+
+### Если элементов несколько (списки, таблицы)
+Если элемент повторяется в списке (например, сообщения в чате, промпты или участники), в конец названия ОБЯЗАТЕЛЬНО добавляется уникальный ID из базы данных.
+*   Пример: `data-testid="btn-delete-prompt-15"` (где 15 — ID промпта).
+*   Пример: `data-testid="msg-chat-42"` (где 42 — ID сообщения).
