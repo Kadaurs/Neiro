@@ -1,4 +1,6 @@
-# путь: routers/settings.py
+# routers/settings.py — Страница настроек API.
+# Позволяет ввести URL, ключ и модель нейросети, сохранить их и проверить подключение
+# кнопкой «Проверить подключение». Если проверка прошла — сервис становится активным.
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates

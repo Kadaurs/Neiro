@@ -1,4 +1,7 @@
-# путь: middleware/session_activity.py
+# middleware/session_activity.py — Продление сессии.
+# После каждого запроса проверяет: если пользователь был активен и ему нужно обновить токен,
+# middleware перевыпускает cookie с новой датой окончания. Так сессия не обрывается,
+# пока человек пользуется сайтом.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response

@@ -1,4 +1,7 @@
-<!-- путь: templates/components/message.html -->
+<!-- components/message.html — Одно сообщение в ленте чата.
+     Показывает автора, время и текст. Сообщения пользователя — на синем фоне,
+     ассистента — на сером. Если был поиск — подсвечивает найденное слово.
+     Также выводит ошибку LLM с кнопкой «Повторить запрос». -->
 {% if m %}
 <div data-msg-id="{{ m.id }}" class="p-3 rounded {{ 'bg-blue-50' if m.role == 'user' else 'bg-gray-50' }}">
     <div class="text-xs text-gray-500 mb-1 flex justify-between">

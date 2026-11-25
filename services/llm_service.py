@@ -1,4 +1,7 @@
-# путь: services/llm_service.py
+# services/llm_service.py — Работа с нейросетью (LLM).
+# Берёт настройки API из базы, собирает промпт (с контекстом из файлов — RAG),
+# отправляет запрос на OpenAI-совместимый эндпоинт и возвращает ответ.
+# Также содержит тестовую проверку подключения для админки.
 import httpx
 from fastapi import HTTPException
 

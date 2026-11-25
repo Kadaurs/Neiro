@@ -1,4 +1,6 @@
-# путь: routers/files.py
+# routers/files.py — Загрузка файлов в чат.
+# Принимает файл, проверяет права доступа к чату и передаёт файл в обработчик
+# (services/file_service.py), который валидирует, нарезает на куски и сохраняет в Chroma.
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session

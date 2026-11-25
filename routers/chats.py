@@ -1,4 +1,7 @@
-# путь: routers/chats.py
+# routers/chats.py — Всё, что связано с чатами.
+# Главная страница со списком чатов, создание личных и командных чатов, просмотр чата,
+# отправка сообщения (с вызовом LLM), поиск по истории, удаление чата, выход из чата
+# и удаление участников.
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
