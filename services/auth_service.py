@@ -1,4 +1,7 @@
-# путь: services/auth_service.py
+# services/auth_service.py — Логика входа и проверки пользователя.
+# Хеширование и проверка паролей, создание и расшифровка JWT-токена, установка/удаление cookie,
+# функция get_current_user (достаёт пользователя по cookie и проверяет, не истекла ли сессия),
+# а также проверки ролей: require_admin, require_teamlead_or_admin.
 from datetime import datetime, timedelta
 from typing import Optional
 

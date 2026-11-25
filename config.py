@@ -1,3 +1,7 @@
+# config.py — Настройки приложения.
+# Читает переменные из файла .env (секретный ключ, адрес БД, папка Chroma, лимиты файлов,
+# время жизни сессии и т.д.) и хранит их в одном объекте settings, доступном из любого места.
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

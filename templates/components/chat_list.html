@@ -1,4 +1,6 @@
-<!-- путь: templates/components/chat_list.html -->
+<!-- components/chat_list.html — Список чатов в боковом меню.
+     Два раздела: «Личные чаты» и «Командные чаты». Каждый чат — ссылка.
+     Вставляется внутрь base.html. -->
 <div class="text-xs uppercase text-gray-500 mt-2 mb-1">Личные чаты</div>
 {% if personal_chats %}
     {% for c in personal_chats %}

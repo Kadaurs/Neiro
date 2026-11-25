@@ -1,4 +1,6 @@
-# путь: models.py
+# models.py — Описание таблиц базы данных.
+# Здесь перечислены все таблицы: пользователи (User), чаты (Chat), участники чатов (ChatUser),
+# сообщения (Message) и настройки API (SystemSettings). Каждый класс = одна таблица.
 from datetime import datetime
 
 from sqlalchemy import (

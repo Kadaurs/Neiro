@@ -1,4 +1,6 @@
-# путь: database.py
+# database.py — Подключение к базе данных.
+# Создаёт движок SQLAlchemy (SQLite-файл app.db), базовый класс Base для моделей
+# и функцию get_db(), которая выдаёт сессию БД каждому запросу и закрывает её после.
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 

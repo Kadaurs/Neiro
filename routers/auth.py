@@ -1,4 +1,6 @@
-# путь: routers/auth.py
+# routers/auth.py — Вход и выход из системы.
+# Отвечает за страницу /login (форма входа), проверку пароля, выдачу cookie с токеном
+# и выход (/logout, стирает cookie).
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
